@@ -13,8 +13,7 @@ const app = express();
 const server = http.createServer(app);
 const corsOptions = {
 origin: [
-    'https://watchparty-hub-i5ba.vercel.app',
-    'https://watchparty-hub-i5ba-git-main-saiprakash025s-projects.vercel.app'
+    'https://watchparty-hub.vercel.app'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true
