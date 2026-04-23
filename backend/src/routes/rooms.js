@@ -7,11 +7,13 @@ const genCode = () =>
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, mood, isPrivate } = req.body;
     const code = genCode();
     const room = await Room.create({
       code,
       name,
+      mood: mood || 'random',
+      isPrivate: isPrivate || false,
       host: req.userId,
       members: [req.userId]
     });
@@ -37,8 +39,12 @@ router.post('/join', auth, async (req, res) => {
 });
 
 router.get('/', auth, async (req, res) => {
-  const rooms = await Room.find().limit(20);
-  res.json(rooms);
+  try {
+    const rooms = await Room.find({ isPrivate: false }).limit(20);
+    res.json(rooms);
+  } catch (err) {
+    res.status(500).json({ message: 'Could not fetch rooms' });
+  }
 });
 
 module.exports = router;
