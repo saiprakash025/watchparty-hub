@@ -57,6 +57,12 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('playback_update', playback);
   });
 
+    socket.on('video_update', ({ roomId, url }) => {
+  const info = liveRooms.get(roomId);
+  if (info) info.videoUrl = url;
+  io.to(roomId).emit('video_update', url);
+});
+
   socket.on('disconnect', () => {
     liveRooms.forEach((info) => info.users.delete(socket.id));
   });
