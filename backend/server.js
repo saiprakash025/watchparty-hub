@@ -121,6 +121,11 @@ try {
   const info = liveRooms.get(roomId);
   if (info) {
       info.videoUrl = url;
+      RoomState.findOneAndUpdate(
+  { roomId },
+  { roomId, videoUrl: url, position: 0, isPlaying: false, updatedAt: new Date() },
+  { upsert: true }
+).catch(() => {});
       // Reset playback when new video is loaded
       info.playback = { isPlaying: false, position: 0, updatedAt: null };
     }
@@ -159,22 +164,48 @@ try {
 
     
   socket.on('disconnect', () => {
-    liveRooms.forEach((info) => {
-        if (info.users.has(socket.id)) {
-        info.users.delete(socket.id);
-        // If room is empty reset it
-        if (info.users.size === 0) {
-          liveRooms.set(roomId, {
-            users: new Set(),
-            messages: [],
-            playback: { isPlaying: false, position: 0, updatedAt: null },
-            videoUrl: ''
-          });
-        }
-      }
-    });
-  });
+  const roomId = socket.roomId;
+  if (!roomId) return;
+  const info = liveRooms.get(roomId);
+  if (!info) return;
 
+  info.users.delete(socket.id);
+
+  // Host reassignment
+  if (info.host === socket.id) {
+    const nextHost = info.users.keys().next().value;
+    info.host = nextHost || null;
+    if (info.host) {
+      io.to(info.host).emit('host_assigned', { message: 'You are now the host! 👑' });
+    }
+  }
+
+  if (info.users.size === 0) {
+    liveRooms.delete(roomId);
+  } else {
+    io.to(roomId).emit('members_update', {
+      members: Array.from(info.users.values()),
+      host: info.users.get(info.host)?.username
+    });
+  }
+});
+    
+socket.on('request_sync', ({ roomId }) => {
+  const info = liveRooms.get(roomId);
+  if (!info) return;
+  let currentPosition = info.playback.position;
+  if (info.playback.isPlaying && info.playback.updatedAt) {
+    const elapsed = (Date.now() - info.playback.updatedAt) / 1000;
+    currentPosition = info.playback.position + elapsed;
+  }
+  socket.emit('room_state', {
+    videoUrl: info.videoUrl,
+    playback: { isPlaying: info.playback.isPlaying, position: currentPosition },
+    messages: info.messages,
+    isHost: info.host === socket.id
+  });
+});
+    
 });
 
 const PORT = process.env.PORT || 5000;
