@@ -1,5 +1,10 @@
 import { io } from 'socket.io-client';
 
-export const socket = io('http://localhost:5000', {
+const baseURL =
+  import.meta.env.MODE === 'development'
+    ? 'http://localhost:5000'
+    : 'https://watchparty-backend.onrender.com';
+
+export const socket = io(baseURL, {
   autoConnect: false
 });
