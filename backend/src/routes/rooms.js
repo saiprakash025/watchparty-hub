@@ -23,18 +23,19 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-router.post('/join', auth, async (req, res) => {
+router.post('/join', async (req, res) => {
   try {
     const { code } = req.body;
-    const room = await Room.findOne({ code });
-    if (!room) return res.status(404).json({ message: 'Room not found' });
-    if (!room.members.includes(req.userId)) {
-      room.members.push(req.userId);
-      await room.save();
+    if (!code || code.trim().length === 0) {
+      return res.status(400).json({ error: 'Room code is required' });
     }
-    res.json(room);
+    const room = await Room.findOne({ code: code.trim().toUpperCase() });
+    if (!room) {
+      return res.status(404).json({ error: 'Invalid room code. No room found.' });
+    }
+    res.json({ room });
   } catch (err) {
-    res.status(500).json({ message: 'Could not join room' });
+    res.status(500).json({ error: 'Server error. Please try again.' });
   }
 });
 
