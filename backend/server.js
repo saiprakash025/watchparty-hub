@@ -11,11 +11,11 @@ const roomRoutes = require('./src/routes/rooms');
 
 const app = express();
 const server = http.createServer(app);
-
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? 'https://watchparty-hub-i5ba.vercel.app'
-    : 'http://localhost:5173',
+origin: [
+    'https://watchparty-hub-i5ba.vercel.app',
+    'https://watchparty-hub-i5ba-git-main-saiprakash025s-projects.vercel.app'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true
 };
