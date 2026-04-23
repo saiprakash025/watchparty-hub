@@ -150,21 +150,28 @@ try {
   socket.on('leave_room', ({ roomId }) => {
     socket.leave(roomId);
     const info = liveRooms.get(roomId);
-    if (info) {
-      info.users.delete(socket.id);
-      // If room is empty, reset everything
-      if (info.users.size === 0) {
-        liveRooms.set(roomId, {
-          users: new Map(),
-            host: null,
-            lastPlayEmit: 0,
-          messages: [],
-          playback: { isPlaying: false, position: 0, updatedAt: null },
-          videoUrl: ''
-        });
-      }
+    if (!info) return;
+
+  info.users.delete(socket.id);
+
+  
+  if (info.host === socket.id) {
+    const nextHost = info.users.keys().next().value;
+    info.host = nextHost || null;
+    if (info.host) {
+      io.to(info.host).emit('host_assigned', { message: 'You are now the host! 👑' });
     }
-  });
+  }
+
+  if (info.users.size === 0) {
+    liveRooms.delete(roomId);  // delete instead of reset
+  } else {
+    io.to(roomId).emit('members_update', {
+      members: Array.from(info.users.values()),
+      host: info.users.get(info.host)?.username
+    });
+  }
+});
 
 
     
