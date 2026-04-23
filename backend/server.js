@@ -13,7 +13,7 @@ const app = express();
 const server = http.createServer(app);
 
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'? 'vercel url' : 'http://localhost:5173',
+  origin: process.env.NODE_ENV === 'production'? 'https://watchparty-hub-i5ba.vercel.app/login' : 'http://localhost:5173',
   methods: ['GET', 'POST'],
   credentials: true
 };
