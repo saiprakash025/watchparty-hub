@@ -138,11 +138,15 @@ postToIframe(next ? 'playVideo' : 'pauseVideo');
         videoId = u.pathname.slice(1);
       }
       if (videoId) {
-        return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=0&origin=${window.location.origin}`;
+        alert('Invalid YouTube URL. Please paste a valid YouTube link.');
+      return '';
       }
-    } catch {}
-    return url;
-  };
+    return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=0&origin=${window.location.origin}`;
+  } catch {
+    alert('Invalid URL format. Please paste a valid YouTube link.');
+    return '';
+  }
+};
 
   const formatTime = (iso) => {
     const d = new Date(iso);
