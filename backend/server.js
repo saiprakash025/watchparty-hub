@@ -13,8 +13,10 @@ const app = express();
 const server = http.createServer(app);
 
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'? 'https://watchparty-hub-i5ba.vercel.app/login' : 'http://localhost:5173',
-  methods: ['GET', 'POST'],
+  origin: process.env.NODE_ENV === 'production'
+    ? 'https://watchparty-hub-i5ba.vercel.app'
+    : 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   credentials: true
 };
 
@@ -27,9 +29,7 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 
-const io = new Server(server, {
-  cors: corsOptions
-});
+const io = new Server(server, { cors: corsOptions });
 
 const liveRooms = new Map();
 
@@ -37,7 +37,11 @@ io.on('connection', (socket) => {
   socket.on('join_room', ({ roomId, user }) => {
     socket.join(roomId);
     if (!liveRooms.has(roomId)) {
-      liveRooms.set(roomId, { users: new Set(), messages: [], playback: { isPlaying: false, position: 0 } });
+      liveRooms.set(roomId, {
+        users: new Set(),
+        messages: [],
+        playback: { isPlaying: false, position: 0 }
+      });
     }
     liveRooms.get(roomId).users.add(socket.id);
   });
@@ -61,8 +65,6 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.get('/', (req, res) => {
-  res.send('WatchParty Hub backend is running');
-});
+app.get('/', (req, res) => res.send('WatchParty Hub backend is running'));
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
