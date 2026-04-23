@@ -39,10 +39,19 @@ io.on('connection', (socket) => {
       liveRooms.set(roomId, {
         users: new Set(),
         messages: [],
-        playback: { isPlaying: false, position: 0 }
+        playback: { isPlaying: false, position: 0 },
+        videoUrl: ''
       });
     }
-    liveRooms.get(roomId).users.add(socket.id);
+    const info = liveRooms.get(roomId);
+    info.users.add(socket.id);
+
+    // Send current state to the newly joined user
+    socket.emit('room_state', {
+      videoUrl: info.videoUrl,
+      playback: info.playback,
+      messages: info.messages
+    });
   });
 
   socket.on('chat_message', ({ roomId, message }) => {
