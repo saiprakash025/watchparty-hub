@@ -12,9 +12,15 @@ const roomRoutes = require('./src/routes/rooms');
 const app = express();
 const server = http.createServer(app);
 
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'? 'vercel url' : 'http://localhost:5173',
+  methods: ['GET', 'POST'],
+  credentials: true
+};
+
 connectDB();
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -22,7 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] }
+  cors: corsOptions
 });
 
 const liveRooms = new Map();
