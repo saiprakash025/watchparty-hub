@@ -130,12 +130,12 @@ postToIframe(next ? 'playVideo' : 'pauseVideo');
 
   const getEmbedUrl = (url) => {
     try {
-      const u = new URL(url);
+      const u = new URL(url.trim());
       let videoId = '';
-      if (u.hostname.includes('youtube.com') && u.searchParams.get('v')) {
+      if (u.hostname.includes('youtube.com')) {
         videoId = u.searchParams.get('v');
       } else if (u.hostname.includes('youtu.be')) {
-        videoId = u.pathname.slice(1);
+        videoId = u.pathname.slice(1).split('?')[0];
       }
       if (videoId) {
         alert('Invalid YouTube URL. Please paste a valid YouTube link.');
