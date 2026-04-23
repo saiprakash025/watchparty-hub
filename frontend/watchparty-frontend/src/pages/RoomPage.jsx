@@ -137,7 +137,7 @@ postToIframe(next ? 'playVideo' : 'pauseVideo');
       } else if (u.hostname.includes('youtu.be')) {
         videoId = u.pathname.slice(1).split('?')[0];
       }
-      if (videoId) {
+      if (!videoId) {
         alert('Invalid YouTube URL. Please paste a valid YouTube link.');
       return '';
       }
