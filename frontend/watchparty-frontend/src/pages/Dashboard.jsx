@@ -19,14 +19,18 @@ export default function Dashboard() {
     fetchRooms();
   }, []);
 
-  const fetchRooms = async () => {
-    try {
-      const res = await api.get('/rooms');
-      setRooms(res.data);
-    } catch (err) {
-      console.error('Failed to load rooms', err);
+ const fetchRooms = async () => {
+  try {
+    const res = await api.get('/rooms');
+    setRooms(res.data);
+  } catch (err) {
+    if (err.response?.status === 401) {
+      logout();
+      navigate('/login');
     }
-  };
+    console.error('Failed to load rooms', err);
+  }
+};
 
   const handleCreateRoom = async (e) => {
     e.preventDefault();
