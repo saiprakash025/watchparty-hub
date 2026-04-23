@@ -8,6 +8,8 @@ const { Server } = require('socket.io');
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/auth');
 const roomRoutes = require('./src/routes/rooms');
+const RoomState = require('./src/models/RoomState');
+const { canSendChat } = require('./src/middleware/rateLimiter');
 
 const app = express();
 const server = http.createServer(app);
@@ -37,14 +39,32 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     if (!liveRooms.has(roomId)) {
       liveRooms.set(roomId, {
-        users: new Set(),
+        users: new Map(), 
+host: null,
+lastPlayEmit: 0,
         messages: [],
         playback: { isPlaying: false, position: 0, updatedAt: null },
         videoUrl: ''
       });
     }
     const info = liveRooms.get(roomId);
-    info.users.add(socket.id);
+    info.users.set(socket.id, { username: user.username });
+socket.roomId = roomId;
+socket.username = user.username;
+
+      // Assign host if none exists
+if (!info.host || !info.users.has(info.host)) {
+  info.host = socket.id;
+}
+
+// Load persisted state from DB
+try {
+  const saved = await RoomState.findOne({ roomId });
+  if (saved && !info.videoUrl) {
+    info.videoUrl = saved.videoUrl;
+    info.playback.position = saved.position || 0;
+  }
+} catch (e) {}
 
       // Calculate current position based on time elapsed since last update
     let currentPosition = info.playback.position;
@@ -61,11 +81,16 @@ io.on('connection', (socket) => {
         isPlaying: info.playback.isPlaying,
         position: currentPosition
       },
-      messages: info.messages
+      messages: info.messages,
+        isHost: info.host === socket.id
     });
   });
 
   socket.on('chat_message', ({ roomId, message }) => {
+       if (!canSendChat(socket.id)) {
+    socket.emit('chat_error', { error: 'Slow down! Max 5 messages per 5 seconds.' });
+    return;
+  }
     const info = liveRooms.get(roomId);
     if (info) info.messages.push(message);
     io.to(roomId).emit('chat_message', message);
