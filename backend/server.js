@@ -38,7 +38,7 @@ const io = new Server(server, { cors: corsOptions });
 const liveRooms = new Map();
 
 io.on('connection', (socket) => {
-  socket.on('join_room', ({ roomId, user }) => {
+  socket.on('join_room', async ({ roomId, user }) => {
     socket.join(roomId);
     if (!liveRooms.has(roomId)) {
       liveRooms.set(roomId, {
