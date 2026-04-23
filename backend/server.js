@@ -10,6 +10,8 @@ const authRoutes = require('./src/routes/auth');
 const roomRoutes = require('./src/routes/rooms');
 const RoomState = require('./src/models/RoomState');
 const { canSendChat } = require('./src/middleware/rateLimiter');
+const { apiLimiter } = require('./src/middleware/rateLimiter');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -26,6 +28,7 @@ connectDB();
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+app.use('/api/', apiLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
@@ -88,7 +91,7 @@ try {
 
   socket.on('chat_message', ({ roomId, message }) => {
        if (!canSendChat(socket.id)) {
-    socket.emit('chat_error', { error: 'Slow down! Max 5 messages per 5 seconds.' });
+    socket.emit('chat_error', { error: 'You are sending messages too fast' });
     return;
   }
     const info = liveRooms.get(roomId);
