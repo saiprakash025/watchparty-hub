@@ -98,14 +98,24 @@ try {
 
   socket.on('playback_update', ({ roomId, playback }) => {
     const info = liveRooms.get(roomId);
-   if (info) {
-      info.playback = {
-        ...playback,
-        updatedAt: Date.now()
-      };
-    }
-    io.to(roomId).emit('playback_update', playback);
-  });
+   if (!info) return;
+
+  // ADD conflict check:
+  const now = Date.now();
+  if (now - info.lastPlayEmit < 500) return;
+  info.lastPlayEmit = now;
+
+  info.playback = { ...playback, updatedAt: now };
+
+  // ADD DB persist:
+  RoomState.findOneAndUpdate(
+    { roomId },
+    { roomId, videoUrl: info.videoUrl, position: playback.position, isPlaying: playback.isPlaying, updatedAt: new Date() },
+    { upsert: true }
+  ).catch(() => {});
+
+  io.to(roomId).emit('playback_update', playback);
+});
 
     socket.on('video_update', ({ roomId, url }) => {
   const info = liveRooms.get(roomId);
