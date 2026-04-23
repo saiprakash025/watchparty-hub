@@ -155,7 +155,9 @@ try {
       // If room is empty, reset everything
       if (info.users.size === 0) {
         liveRooms.set(roomId, {
-          users: new Set(),
+          users: new Map(),
+            host: null,
+            lastPlayEmit: 0,
           messages: [],
           playback: { isPlaying: false, position: 0, updatedAt: null },
           videoUrl: ''
