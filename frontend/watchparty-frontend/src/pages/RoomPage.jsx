@@ -18,6 +18,15 @@ export default function RoomPage() {
   const iframeRef = useRef(null);
   const chatEndRef = useRef(null);
 
+  const postToIframe = (func, args = []) => {
+    if (iframeRef.current) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func, args }),
+        '*'
+      );
+    }
+  };
+  
   useEffect(() => {
     if (!user) return navigate('/login');
 
@@ -27,26 +36,31 @@ export default function RoomPage() {
     // Receive current room state on join
     socket.on('room_state', ({ videoUrl, playback, messages }) => {
       if (videoUrl) setVideoUrl(videoUrl);
-      if (playback) setIsPlaying(playback.isPlaying);
-      if (messages) setMessages(messages);
+      if (messages?.length) setMessages(messages);
+      if (playback) {
+        setIsPlaying(playback.isPlaying);
+        // Seek to correct position after iframe loads
+        setTimeout(() => {
+          if (playback.position > 0) {
+            postToIframe('seekTo', [Math.floor(playback.position), true]);
+          }
+          if (playback.isPlaying) {
+            postToIframe('playVideo');
+          }
+        }, 3000); // wait 3s for iframe to load
+      }
     });
 
     socket.on('chat_message', (msg) =>
       setMessages((prev) => [...prev, msg])
     );
 
-    socket.on('playback_update', ({ isPlaying }) => {
+    socket.on('playback_update', ({ isPlaying, position }) => {
       setIsPlaying(isPlaying);
-      // Control iframe playback via postMessage to YouTube
-      if (iframeRef.current) {
-        iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({
-            event: 'command',
-            func: isPlaying ? 'playVideo' : 'pauseVideo'
-          }),
-          '*'
-        );
+      if (position !== undefined) {
+        postToIframe('seekTo', [Math.floor(position), true]);
       }
+      postToIframe(isPlaying ? 'playVideo' : 'pauseVideo');
     });
 
     socket.on('video_update', (url) => {
@@ -54,11 +68,18 @@ export default function RoomPage() {
       setIsPlaying(false);
     });
 
+    socket.on('seek_update', (position) => {
+      postToIframe('seekTo', [Math.floor(position), true]);
+    });
+
     return () => {
+      // Emit leave_room before disconnecting so backend resets if empty
+      socket.emit('leave_room', { roomId: id });
       socket.off('room_state');
       socket.off('chat_message');
       socket.off('playback_update');
       socket.off('video_update');
+      socket.off('seek_update');
       socket.disconnect();
     };
   }, [id, user]);
@@ -83,18 +104,11 @@ export default function RoomPage() {
 
   const togglePlay = () => {
     const next = !isPlaying;
-    // Emit to all users in room
+   // Get current position from iframe via YT player state
     socket.emit('playback_update', { roomId: id, playback: { isPlaying: next, position: 0 } });
-    // Also control local iframe immediately
-    if (iframeRef.current) {
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({
-          event: 'command',
-          func: next ? 'playVideo' : 'pauseVideo'
-        }),
-        '*'
-      );
-    }
+
+    
+postToIframe(next ? 'playVideo' : 'pauseVideo');
     setIsPlaying(next);
   };
 
@@ -108,6 +122,12 @@ export default function RoomPage() {
     setIsPlaying(false);
   };
 
+ const handleLeave = () => {
+    socket.emit('leave_room', { roomId: id });
+    socket.disconnect();
+    navigate('/');
+  };
+
   const getEmbedUrl = (url) => {
     try {
       const u = new URL(url);
@@ -118,8 +138,7 @@ export default function RoomPage() {
         videoId = u.pathname.slice(1);
       }
       if (videoId) {
-        // enablejsapi=1 is required for postMessage play/pause control
-        return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=0`;
+        return `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=0&origin=${window.location.origin}`;
       }
     } catch {}
     return url;
@@ -135,7 +154,7 @@ export default function RoomPage() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <button onClick={() => navigate('/')} style={styles.backBtn}>← Back</button>
+          <button onClick={handleLeave} style={styles.backBtn}>← Leave Room</button>
           <div>
             <h2 style={styles.roomName}>{room?.name || 'Watch Room'}</h2>
             <span style={styles.roomCode}>Code: {room?.code || '—'}</span>
@@ -147,7 +166,7 @@ export default function RoomPage() {
             background: isPlaying ? '#22c55e' : '#f59e0b'
           }} />
           <span style={styles.statusText}>
-            {isPlaying ? 'Playing' : 'Paused'}
+            {isPlaying ? '● Playing' : '⏸ Paused'}
           </span>
         </div>
       </header>
@@ -188,11 +207,12 @@ export default function RoomPage() {
           <div style={styles.controls}>
             <button
               onClick={togglePlay}
+              disabled={!videoUrl}
               style={{
                 ...styles.playBtn,
-                background: isPlaying ? '#dc2626' : '#16a34a'
+                background: !videoUrl ? '#334155' : isPlaying ? '#dc2626' : '#16a34a',
+                cursor: !videoUrl ? 'not-allowed' : 'pointer'
               }}
-              disabled={!videoUrl}
             >
               {isPlaying ? '⏸ Pause for Everyone' : '▶ Play for Everyone'}
             </button>
@@ -214,10 +234,14 @@ export default function RoomPage() {
                 key={m.id}
                 style={{
                   ...styles.message,
-                  flexDirection: m.user.username === user.username ? 'row-reverse' : 'row'
+                  flexDirection:
+                    m.user.username === user.username ? 'row-reverse' : 'row'
                 }}
               >
-                <div style={{ ...styles.avatar, background: m.user.avatarColor || '#2563eb' }}>
+                <div style={{
+                  ...styles.avatar,
+                  background: m.user.avatarColor || '#2563eb'
+                }}>
                   {m.user.username[0].toUpperCase()}
                 </div>
                 <div style={styles.msgContent}>
@@ -227,7 +251,8 @@ export default function RoomPage() {
                   </div>
                   <div style={{
                     ...styles.msgBubble,
-                    background: m.user.username === user.username ? '#2563eb' : '#1e293b'
+                    background:
+                      m.user.username === user.username ? '#2563eb' : '#1e293b'
                   }}>
                     {m.text}
                   </div>
@@ -251,7 +276,6 @@ export default function RoomPage() {
     </div>
   );
 }
-
 const styles = {
   page: { minHeight: '100vh', background: '#0f172a', color: '#fff', display: 'flex', flexDirection: 'column' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #1e293b', background: '#0f172a' },
