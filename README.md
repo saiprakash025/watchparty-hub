@@ -2,6 +2,13 @@
 
 A real-time watch party application that lets users create and join watch sessions together. Built with a React frontend and a Node.js/Express backend, communicating over WebSockets via Socket.IO.
 
+## 🌐 Live Demo
+
+| | Link |
+|---|---|
+| **Frontend** | [watchparty-hub.vercel.app](https://watchparty-hub.vercel.app/login) |
+| **Backend** | [watchparty-hub.onrender.com](https://watchparty-hub.onrender.com) |
+
 ---
 
 ## 🚀 Tech Stack
@@ -123,7 +130,8 @@ Authentication is handled using **JWT tokens** with **bcryptjs** for password ha
 
 ## 🌐 Deployment
 
-The frontend is configured for deployment on **Vercel** (see `vercel.json`). The backend can be deployed to any Node.js-compatible hosting (e.g., Render, Railway, Heroku).
+- **Frontend** is deployed on **Vercel**: [watchparty-hub.vercel.app](https://watchparty-hub.vercel.app/login)
+- **Backend** is deployed on **Render**: [watchparty-hub.onrender.com](https://watchparty-hub.onrender.com)
 
 ---
 
